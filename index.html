@@ -1,98 +1,232 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bashoratchi Uz</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Bashoratchi Uz — Mines (One-time login)</title>
 <style>
-  body{margin:0;font-family:Arial,sans-serif;background:#111;color:#fff;text-align:center;}
-  .page{display:none;padding:40px;}
-  .active{display:block;}
-  input,button{padding:10px;margin:5px;border:none;border-radius:6px;}
-  input{width:80%;max-width:250px;}
-  button{background:#28a745;color:#fff;cursor:pointer;}
-  button:hover{background:#1e7e34;}
-  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:300px;margin:20px auto;}
-  .cell{aspect-ratio:1/1;background:#3498db;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;}
-  .cell.star{background:#1abc9c;}
-  .cell.bomb{background:#e74c3c;}
+  :root{
+    --bg:#121212; --text:#fff; --accent:#3498db; --good:#1abc9c; --bad:#e74c3c;
+  }
+  body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);text-align:center;padding:28px;}
+  .card{background:#1e1e1e;padding:18px;border-radius:12px;display:inline-block;min-width:320px;}
+  input{width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #2b2b2b;background:#111;color:var(--text);}
+  button{padding:10px 14px;margin:6px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer;}
+  button.secondary{background:#2e2e2e;}
+  .error{color:var(--bad);min-height:18px;}
+  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:18px;max-width:360px;}
+  .cell{aspect-ratio:1/1;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;}
+  .cell.star{background:var(--good)}
+  .cell.bomb{background:var(--bad)}
+  header{display:flex;justify-content:space-between;align-items:center;gap:10px;max-width:720px;margin:0 auto 12px;}
+  .logout{background:#c0392b;}
+  small{opacity:.8}
 </style>
 </head>
 <body>
 
-<!-- LOGIN PAGE -->
-<div id="login" class="page active">
+<!-- Login card -->
+<div id="loginCard" class="card" style="display:block;">
   <h2>Bashoratchi Uz</h2>
-  <input type="text" id="uid" placeholder="ID"><br>
-  <input type="text" id="ukey" placeholder="KEY"><br>
-  <button onclick="login()">Kirish</button>
-  <p id="error" style="color:red;"></p>
+  <p>Ilovaga kirish uchun ID va KEY kiriting</p>
+  <input id="inpId" placeholder="ID (masalan 27102008)"/>
+  <input id="inpKey" placeholder="KEY (masalan 5420)"/>
+  <div style="display:flex;gap:8px;justify-content:center;">
+    <button onclick="doLogin()">Kirish</button>
+    <button class="secondary" onclick="clearStored()">Tozalash</button>
+  </div>
+  <div class="error" id="err"></div>
+  <small>Get key: <a href="https://t.me/bashoratchi1xbet" target="_blank" style="color:#9ed1ff">@bashoratchi1xbet</a></small>
 </div>
 
-<!-- MINES PAGE -->
-<div id="main" class="page">
-  <h2>Mines Signal</h2>
-  <button onclick="signal()">Signal</button>
-  <button onclick="resetGrid()">Reset</button>
-  <div id="grid" class="grid"></div>
+<!-- Main (mines) -->
+<div id="mainApp" style="display:none;max-width:720px;margin:0 auto;text-align:center;">
+  <header>
+    <h2 style="margin:0">Mines Signal</h2>
+    <div>
+      <button class="logout" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <div style="background:#1b1b1b;padding:12px;border-radius:12px;display:inline-block;">
+    <label>Bombalar soni:
+      <select id="bombCount">
+        <option value="1">1</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+        <option value="7">7</option>
+      </select>
+    </label>
+    <div style="margin-top:10px;">
+      <button onclick="signal()">Signal</button>
+      <button class="secondary" onclick="resetGrid()">Reset</button>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div style="margin-top:12px" class="footer">
+      Promocode: <strong>BASHORATCHIUZ</strong><br/><small>(speed = 80ms)</small>
+    </div>
+  </div>
 </div>
 
 <script>
-const CORRECT_ID = "27102008";   // sizning ID
-const CORRECT_KEY = "5420";      // sizning KEY
+/*
+  Qanday ishlaydi:
+  - correctIds va correctKey kod ichida saqlanadi.
+  - currentConfigHash avtomatik hisoblanadi (agar siz kodda ID yoki KEY o'zgartirsangiz, hash ham o'zgaradi).
+  - login muvaffaqiyatli bo'lsa localStorage ga "savedAuth" obyekti saqlanadi: {id,key,configHash}
+  - sahifa ochilganda savedAuth tekshiriladi: agar saqlangan configHash hozirgi configHash bilan mos bo'lsa va credentiallar to'g'ri bo'lsa auto-login bo'ladi.
+  - agar siz kodda ID/KEY yoki listni o'zgartirsangiz -> auto-login ishlamaydi va qayta login so'raladi.
+*/
+
+const correctIds = ["27102008","81293494","19294943","99887766"]; // kerak bo'lsa o'zgartiring
+const correctKey = "5420"; // sizning key
+const SPEED_MS = 80;
 const SIZE = 25;
-const SPEED = 80;
-let bombs = new Set(), timer=null;
 
-function showPage(id){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-}
-
-function login(){
-  let id=document.getElementById("uid").value.trim();
-  let key=document.getElementById("ukey").value.trim();
-  if(id===CORRECT_ID && key===CORRECT_KEY){
-    showPage("main");
-    buildGrid();
-  }else{
-    document.getElementById("error").textContent="❌ ID yoki KEY noto‘g‘ri!";
+// configHash = base64(JSON of correctIds + ":" + correctKey)
+// avtomatik yangilanadi agar siz correctIds yoki correctKeyni o'zgartirsangiz
+function getConfigHash(){
+  try{
+    const s = JSON.stringify(correctIds) + ":" + String(correctKey);
+    return btoa(unescape(encodeURIComponent(s))); // base64 safe
+  }catch(e){
+    return btoa(String(Date.now())); // fallback
   }
 }
 
+// DOM elementlar
+const loginCard = document.getElementById('loginCard');
+const mainApp = document.getElementById('mainApp');
+const errEl = document.getElementById('err');
+
+document.addEventListener('DOMContentLoaded', () => {
+  // sahifa yuklanganda savedAuth tekshiriladi
+  try {
+    const saved = localStorage.getItem('savedAuth');
+    if (!saved) { showLogin(); return; }
+    const obj = JSON.parse(saved);
+    const configHash = getConfigHash();
+
+    // tekshirish: saqlangan configHash bilan hozirgi configHash mos bo'lsa va credentiallar koddagi bilan to'g'ri bo'lsa -> auto login
+    if (obj && obj.configHash === configHash && 
+        correctIds.includes(String(obj.id)) && String(obj.key) === String(correctKey)) {
+      // muvaffaqiyatli auto-login
+      showMain();
+    } else {
+      // noto'g'ri yoki eskirgan -> tozalaymiz va login so'raymiz
+      localStorage.removeItem('savedAuth');
+      showLogin();
+    }
+  } catch(e){
+    console.error("Auto-login tekshiruvida xatolik:", e);
+    localStorage.removeItem('savedAuth');
+    showLogin();
+  }
+});
+
+// UI helpers
+function showMain(){
+  loginCard.style.display = 'none';
+  mainApp.style.display = 'block';
+  errEl.textContent = '';
+  buildGrid();
+}
+function showLogin(){
+  loginCard.style.display = 'block';
+  mainApp.style.display = 'none';
+}
+
+// login funksiyasi
+function doLogin(){
+  const id = document.getElementById('inpId').value.trim();
+  const key = document.getElementById('inpKey').value.trim();
+  if (!id || !key) { errEl.textContent = "Iltimos ID va KEY kiriting."; return; }
+
+  // tekshirish
+  if (correctIds.includes(id) && key === String(correctKey)){
+    // saqlaymiz
+    const auth = { id: id, key: key, configHash: getConfigHash() };
+    localStorage.setItem('savedAuth', JSON.stringify(auth));
+    showMain();
+  } else {
+    errEl.textContent = "❌ ID yoki KEY noto‘g‘ri!";
+  }
+}
+
+// qo'shimcha: tozalash tugmasi (developer uchun)
+function clearStored(){
+  localStorage.removeItem('savedAuth');
+  errEl.textContent = "Saqlangan ma'lumot o'chirildi.";
+}
+
+// logout
+function logout(){
+  localStorage.removeItem('savedAuth');
+  showLogin();
+  document.getElementById('inpId').value = "";
+  document.getElementById('inpKey').value = "";
+}
+
+/* ===== Mines logic (odatdagidek) ===== */
+let bombIndexes = new Set();
+let animTimer = null;
+
 function buildGrid(){
-  let g=document.getElementById("grid");
-  g.innerHTML="";
-  for(let i=0;i<SIZE;i++){
-    let d=document.createElement("div");
-    d.className="cell"; d.dataset.i=i;
-    g.appendChild(d);
+  const g = document.getElementById('grid');
+  g.innerHTML = '';
+  for (let i=0;i<SIZE;i++){
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.index = i;
+    g.appendChild(cell);
   }
 }
 
 function resetGrid(){
-  clearInterval(timer); timer=null; buildGrid();
+  clearInterval(animTimer);
+  animTimer = null;
+  buildGrid();
 }
 
 function signal(){
-  resetGrid();
-  bombs=new Set();
-  while(bombs.size<3){ bombs.add(Math.floor(Math.random()*SIZE)); }
-  let order=[...bombs];
-  for(let i=0;i<SIZE;i++){ if(!bombs.has(i)) order.push(i); }
-  let k=0;
-  timer=setInterval(()=>{
-    if(k>=order.length){clearInterval(timer);return;}
+  clearInterval(animTimer);
+  const count = parseInt(document.getElementById('bombCount').value,10) || 3;
+  bombIndexes = new Set();
+  while (bombIndexes.size < count){
+    bombIndexes.add(Math.floor(Math.random()*SIZE));
+  }
+  // barcha kataklarni asl holatga qaytarish
+  document.querySelectorAll('.cell').forEach(c=>{
+    c.className = 'cell';
+    c.textContent = '';
+  });
+
+  // ochilish ketma-ketligi: oldin bombalar keyin yulduzlar
+  const bombList = [...bombIndexes];
+  const starList = [];
+  for (let i=0;i<SIZE;i++){ if(!bombIndexes.has(i)) starList.push(i); }
+  const order = bombList.concat(starList);
+
+  let k = 0;
+  animTimer = setInterval(()=>{
+    if (k >= order.length){ clearInterval(animTimer); return; }
     reveal(order[k++]);
-  },SPEED);
+  }, SPEED_MS);
 }
 
-function reveal(i){
-  let c=document.querySelector(`.cell[data-i="${i}"]`);
-  if(!c)return;
-  if(bombs.has(i)){c.classList.add("bomb");c.textContent="💣";}
-  else{c.classList.add("star");c.textContent="⭐";}
+function reveal(index){
+  const cell = document.querySelector(`.cell[data-index="${index}"]`);
+  if (!cell) return;
+  cell.classList.add('revealed');
+  if (bombIndexes.has(index)){
+    cell.classList.add('bomb');
+    cell.textContent = '💣';
+  } else {
+    cell.classList.add('star');
+    cell.textContent = '⭐';
+  }
 }
 </script>
+
 </body>
 </html>
