@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Bashoratchi Uz — Mines</title>
+<style>
+  :root{
+    --bg:#222;
+    --text:#fff;
+    --cell-blue:#3498db;   /* ko‘k (default) */
+    --star:#1abc9c;        /* yulduz ochilganda fon */
+    --bomb:#e74c3c;        /* bomba ochilganda fon */
+  }
+  body{
+    margin:0; font-family:Arial, sans-serif; background:var(--bg); color:var(--text); text-align:center;
+  }
+
+  /* LOGIN */
+  #login-page{ padding-top:90px; }
+  .login-box{
+    background:#333; padding:22px; border-radius:14px; display:inline-block; min-width:300px;
+  }
+  .login-box input{
+    width:100%; box-sizing:border-box; margin:8px 0; padding:10px 12px; border:none; border-radius:10px; font-size:16px;
+  }
+  .btn{
+    display:inline-block; margin:8px 6px; padding:10px 18px; background:#007bff; color:#fff; border:none; border-radius:10px; font-size:16px; cursor:pointer;
+  }
+  .btn:hover{ background:#005ec6; }
+  .get-key{
+    display:inline-block; margin-top:8px; padding:10px 18px; background:#28a745; color:#fff; border-radius:10px; text-decoration:none;
+  }
+  .get-key:hover{ background:#1f8a36; }
+  #error{ margin-top:8px; color:#ff6b6b; font-size:14px; min-height:18px; }
+
+  /* MINES */
+  #mines-page{ display:none; padding:20px 10px 40px; }
+  header{ padding:12px 0; background:#333; margin-bottom:12px; }
+  .controls{ margin:10px 0 6px; }
+  select{
+    padding:8px 10px; border:none; border-radius:10px; font-size:16px; background:#444; color:#fff;
+  }
+
+  .grid{
+    width:min(92vw, 360px);
+    margin:18px auto 0;
+    display:grid; grid-template-columns:repeat(5, 1fr); gap:10px;
+  }
+  .cell{
+    aspect-ratio:1/1;           /* kvadrat */
+    background:var(--cell-blue);
+    border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:26px; user-select:none;
+    transition:transform .08s ease, background .08s ease;
+  }
+  .cell.revealed{ transform:scale(0.98); }
+  .cell.star{ background:var(--star); }
+  .cell.bomb{ background:var(--bomb); }
+  .footer{ margin-top:22px; font-size:13px; opacity:.9; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN PAGE -->
+<div id="login-page">
+  <div class="login-box">
+    <h2>Bashoratchi Uz</h2>
+    <p>Enter your ID and KEY</p>
+    <input type="text" id="userId" placeholder="ID" />
+    <input type="text" id="userKey" placeholder="Key" />
+    <button class="btn" onclick="login()">Login</button>
+    <a class="get-key" href="https://t.me/bashoratchi1xbet" target="_blank">🔑 Get Key</a>
+    <div id="error"></div>
+  </div>
+</div>
+
+<!-- MINES PAGE -->
+<div id="mines-page">
+  <header><h2>Mines Signal</h2></header>
+
+  <div class="controls">
+    <label for="bombCount">Bombalar soni:&nbsp;</label>
+    <select id="bombCount">
+      <option value="1">1</option>
+      <option value="3">3</option>
+      <option value="5">5</option>
+      <option value="7">7</option>
+    </select>
+  </div>
+
+  <div>
+    <button class="btn" onclick="signal()">Signal</button>
+    <button class="btn" onclick="resetGrid()">Reset</button>
+  </div>
+
+  <div id="grid" class="grid"></div>
+
+  <div class="footer">
+    Promocode: <strong>BASHORATCHIUZ</strong><br/>
+    <small>(promocode = 90% accuracy)</small>
+  </div>
+</div>
+
+<script>
+  /* === ID & KEY sozlamalari === */
+  const correctIds = ["81293494","19294943","99887766"]; // xohlagancha qo‘shib boring
+  const correctKey = "5420-2913-38211-18333";
+
+  function login(){
+    const id  = document.getElementById('userId').value.trim();
+    const key = document.getElementById('userKey').value.trim();
+    const err = document.getElementById('error');
+
+    if (correctIds.includes(id) && key === correctKey){
+      document.getElementById('login-page').style.display = 'none';
+      document.getElementById('mines-page').style.display = 'block';
+      buildGrid(); // grid tayyorlab qo‘yamiz
+      err.textContent = "";
+    } else {
+      err.textContent = "❌ ID yoki KEY noto‘g‘ri!";
+    }
+  }
+
+  /* === Mines logikasi === */
+  const SIZE = 25; // 5x5
+  let bombIndexes = new Set();
+  let animTimer = null;
+
+  function buildGrid(){
+    const grid = document.getElementById('grid');
+    grid.innerHTML = "";
+    for (let i=0; i<SIZE; i++){
+      const d = document.createElement('div');
+      d.className = "cell";          // ko‘k (default)
+      d.dataset.index = i;
+      grid.appendChild(d);
+    }
+  }
+
+  function resetGrid(){
+    clearInterval(animTimer);
+    animTimer = null;
+    buildGrid();
+  }
+
+  function signal(){
+    clearInterval(animTimer);
+
+    // 1) new bombs set
+    const count = parseInt(document.getElementById('bombCount').value, 10);
+    bombIndexes = new Set();
+    while (bombIndexes.size < count){
+      bombIndexes.add(Math.floor(Math.random()*SIZE));
+    }
+
+    // 2) tayyorlash: barcha kataklarni ko‘kka qaytaramiz
+    document.querySelectorAll('.cell').forEach(c=>{
+      c.className = 'cell';
+      c.textContent = '';
+    });
+
+    // 3) ochilish ketma-ketligi: avval bombalar, keyin yulduzlar
+    const bombList = [...bombIndexes];
+    const starList = [];
+    for (let i=0;i<SIZE;i++){ if(!bombIndexes.has(i)) starList.push(i); }
+
+    // tez ochilish — interval juda kichik
+    const order = bombList.concat(starList); // birinchi bombalar, keyin yulduzlar
+    let k = 0;
+    const speedMs = 80; // kerak bo‘lsa 40–80 oralig‘ida o‘zgartiring (tezroq/sekinroq)
+
+    animTimer = setInterval(()=>{
+      if (k >= order.length){ clearInterval(animTimer); return; }
+      const idx = order[k++];
+      reveal(idx);
+    }, speedMs);
+  }
+
+  function reveal(index){
+    const cell = document.querySelector(`.cell[data-index="${index}"]`);
+    if (!cell) return;
+    cell.classList.add('revealed');
+
+    if (bombIndexes.has(index)){
+      cell.classList.add('bomb');
+      cell.textContent = "💣";
+    } else {
+      cell.classList.add('star');
+      cell.textContent = "⭐";
+    }
+  }
+</script>
+</body>
+</html>
