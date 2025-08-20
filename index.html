@@ -1,235 +1,98 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Bashoratchi Uz — Mines</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bashoratchi Uz</title>
 <style>
-  :root{
-    --bg:#222;
-    --text:#fff;
-    --cell-blue:#3498db;   /* ko‘k (default) */
-    --star:#1abc9c;        /* yulduz ochilganda fon */
-    --bomb:#e74c3c;        /* bomba ochilganda fon */
-  }
-  body{
-    margin:0; font-family:Arial, sans-serif; background:var(--bg); color:var(--text); text-align:center;
-  }
-
-  /* LOGIN */
-  #login-page{ padding-top:90px; }
-  .login-box{
-    background:#333; padding:22px; border-radius:14px; display:inline-block; min-width:300px;
-  }
-  .login-box input{
-    width:100%; box-sizing:border-box; margin:8px 0; padding:10px 12px; border:none; border-radius:10px; font-size:16px;
-  }
-  .btn{
-    display:inline-block; margin:8px 6px; padding:10px 18px; background:#007bff; color:#fff; border:none; border-radius:10px; font-size:16px; cursor:pointer;
-  }
-  .btn:hover{ background:#005ec6; }
-  .get-key{
-    display:inline-block; margin-top:8px; padding:10px 18px; background:#28a745; color:#fff; border-radius:10px; text-decoration:none;
-  }
-  .get-key:hover{ background:#1f8a36; }
-  #error{ margin-top:8px; color:#ff6b6b; font-size:14px; min-height:18px; }
-
-  /* MINES */
-  #mines-page{ display:none; padding:20px 10px 40px; }
-  header{ padding:12px 0; background:#333; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; max-width:820px; margin-left:auto; margin-right:auto; }
-  header h2{ margin:0; padding-left:12px; font-size:20px; }
-  .controls{ margin:10px 0 6px; }
-  select{
-    padding:8px 10px; border:none; border-radius:10px; font-size:16px; background:#444; color:#fff;
-  }
-
-  .grid{
-    width:min(92vw, 360px);
-    margin:18px auto 0;
-    display:grid; grid-template-columns:repeat(5, 1fr); gap:10px;
-  }
-  .cell{
-    aspect-ratio:1/1;           /* kvadrat */
-    background:var(--cell-blue);
-    border-radius:10px;
-    display:flex; align-items:center; justify-content:center;
-    font-size:26px; user-select:none;
-    transition:transform .08s ease, background .08s ease;
-  }
-  .cell.revealed{ transform:scale(0.98); }
-  .cell.star{ background:var(--star); }
-  .cell.bomb{ background:var(--bomb); }
-  .footer{ margin-top:22px; font-size:13px; opacity:.9; }
-
-  /* Logout button */
-  .logout-btn{
-    margin-right:12px; margin-left:auto; margin-top:0; margin-bottom:0; background:#c0392b;
-    padding:8px 12px; border-radius:10px; color:#fff; border:none; cursor:pointer;
-  }
-  .logout-btn:hover{ background:#992d22; }
+  body{margin:0;font-family:Arial,sans-serif;background:#111;color:#fff;text-align:center;}
+  .page{display:none;padding:40px;}
+  .active{display:block;}
+  input,button{padding:10px;margin:5px;border:none;border-radius:6px;}
+  input{width:80%;max-width:250px;}
+  button{background:#28a745;color:#fff;cursor:pointer;}
+  button:hover{background:#1e7e34;}
+  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:300px;margin:20px auto;}
+  .cell{aspect-ratio:1/1;background:#3498db;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;}
+  .cell.star{background:#1abc9c;}
+  .cell.bomb{background:#e74c3c;}
 </style>
 </head>
 <body>
 
 <!-- LOGIN PAGE -->
-<div id="login-page">
-  <div class="login-box">
-    <h2>Bashoratchi Uz</h2>
-    <p>ID va KEY ni kiriting</p>
-    <input type="text" id="userId" placeholder="ID" />
-    <input type="text" id="userKey" placeholder="Key" />
-    <div style="text-align:center;">
-      <button class="btn" onclick="login()">Login</button>
-      <a class="get-key" href="https://t.me/bashoratchi1xbet" target="_blank">🔑 Get Key</a>
-    </div>
-    <div id="error"></div>
-  </div>
+<div id="login" class="page active">
+  <h2>Bashoratchi Uz</h2>
+  <input type="text" id="uid" placeholder="ID"><br>
+  <input type="text" id="ukey" placeholder="KEY"><br>
+  <button onclick="login()">Kirish</button>
+  <p id="error" style="color:red;"></p>
 </div>
 
 <!-- MINES PAGE -->
-<div id="mines-page">
-  <header>
-    <h2>Mines Signal</h2>
-    <div style="display:flex; align-items:center;">
-      <button class="logout-btn" onclick="logout()">Logout</button>
-    </div>
-  </header>
-
-  <div class="controls">
-    <label for="bombCount">Bombalar soni:&nbsp;</label>
-    <select id="bombCount">
-      <option value="1">1</option>
-      <option value="3">3</option>
-      <option value="5">5</option>
-      <option value="7">7</option>
-    </select>
-  </div>
-
-  <div>
-    <button class="btn" onclick="signal()">Signal</button>
-    <button class="btn" onclick="resetGrid()">Reset</button>
-  </div>
-
+<div id="main" class="page">
+  <h2>Mines Signal</h2>
+  <button onclick="signal()">Signal</button>
+  <button onclick="resetGrid()">Reset</button>
   <div id="grid" class="grid"></div>
-
-  <div class="footer">
-    Promocode: <strong>BASHORATCHIUZ</strong><br/>
-    <small>(promocode = 90% accuracy)</small>
-  </div>
 </div>
 
 <script>
-  /* === ID & KEY sozlamalari === */
-  const correctIds = ["81293494","19294943","99887766"];
-  const correctKey = "5420-2913-38211-18333";
-  const SPEED_MS = 80;
+const CORRECT_ID = "27102008";   // sizning ID
+const CORRECT_KEY = "5420";      // sizning KEY
+const SIZE = 25;
+const SPEED = 80;
+let bombs = new Set(), timer=null;
 
-  // Sahifa yuklanganda avtomatik tekshir
-  document.addEventListener("DOMContentLoaded", () => {
-    const savedId = localStorage.getItem("userId");
-    const savedKey = localStorage.getItem("userKey");
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
 
-    if (savedId && savedKey && correctIds.includes(savedId) && savedKey === correctKey) {
-      document.getElementById('login-page').style.display = 'none';
-      document.getElementById('mines-page').style.display = 'block';
-      buildGrid();
-    } else {
-      localStorage.removeItem("userId");
-      localStorage.removeItem("userKey");
-      document.getElementById('login-page').style.display = 'block';
-      document.getElementById('mines-page').style.display = 'none';
-    }
-  });
-
-  function login(){
-    const id  = document.getElementById('userId').value.trim();
-    const key = document.getElementById('userKey').value.trim();
-    const err = document.getElementById('error');
-
-    if (correctIds.includes(id) && key === correctKey){
-      localStorage.setItem("userId", id);
-      localStorage.setItem("userKey", key);
-      document.getElementById('login-page').style.display = 'none';
-      document.getElementById('mines-page').style.display = 'block';
-      buildGrid();
-      err.textContent = "";
-    } else {
-      err.textContent = "❌ ID yoki KEY noto‘g‘ri!";
-    }
-  }
-
-  function logout(){
-    localStorage.removeItem("userId");
-    localStorage.removeItem("userKey");
-    document.getElementById('login-page').style.display = 'block';
-    document.getElementById('mines-page').style.display = 'none';
-    document.getElementById('userId').value = "";
-    document.getElementById('userKey').value = "";
-  }
-
-  /* === Mines logikasi === */
-  const SIZE = 25; // 5x5
-  let bombIndexes = new Set();
-  let animTimer = null;
-
-  function buildGrid(){
-    const grid = document.getElementById('grid');
-    grid.innerHTML = "";
-    for (let i=0; i<SIZE; i++){
-      const d = document.createElement('div');
-      d.className = "cell";
-      d.dataset.index = i;
-      grid.appendChild(d);
-    }
-  }
-
-  function resetGrid(){
-    clearInterval(animTimer);
-    animTimer = null;
+function login(){
+  let id=document.getElementById("uid").value.trim();
+  let key=document.getElementById("ukey").value.trim();
+  if(id===CORRECT_ID && key===CORRECT_KEY){
+    showPage("main");
     buildGrid();
+  }else{
+    document.getElementById("error").textContent="❌ ID yoki KEY noto‘g‘ri!";
   }
+}
 
-  function signal(){
-    clearInterval(animTimer);
-
-    const count = parseInt(document.getElementById('bombCount').value, 10);
-    bombIndexes = new Set();
-    while (bombIndexes.size < count){
-      bombIndexes.add(Math.floor(Math.random()*SIZE));
-    }
-
-    document.querySelectorAll('.cell').forEach(c=>{
-      c.className = 'cell';
-      c.textContent = '';
-    });
-
-    const bombList = [...bombIndexes];
-    const starList = [];
-    for (let i=0;i<SIZE;i++){ if(!bombIndexes.has(i)) starList.push(i); }
-
-    const order = bombList.concat(starList);
-    let k = 0;
-
-    animTimer = setInterval(()=>{
-      if (k >= order.length){ clearInterval(animTimer); return; }
-      const idx = order[k++];
-      reveal(idx);
-    }, SPEED_MS);
+function buildGrid(){
+  let g=document.getElementById("grid");
+  g.innerHTML="";
+  for(let i=0;i<SIZE;i++){
+    let d=document.createElement("div");
+    d.className="cell"; d.dataset.i=i;
+    g.appendChild(d);
   }
+}
 
-  function reveal(index){
-    const cell = document.querySelector(`.cell[data-index="${index}"]`);
-    if (!cell) return;
-    cell.classList.add('revealed');
+function resetGrid(){
+  clearInterval(timer); timer=null; buildGrid();
+}
 
-    if (bombIndexes.has(index)){
-      cell.classList.add('bomb');
-      cell.textContent = "💣";
-    } else {
-      cell.classList.add('star');
-      cell.textContent = "⭐";
-    }
-  }
+function signal(){
+  resetGrid();
+  bombs=new Set();
+  while(bombs.size<3){ bombs.add(Math.floor(Math.random()*SIZE)); }
+  let order=[...bombs];
+  for(let i=0;i<SIZE;i++){ if(!bombs.has(i)) order.push(i); }
+  let k=0;
+  timer=setInterval(()=>{
+    if(k>=order.length){clearInterval(timer);return;}
+    reveal(order[k++]);
+  },SPEED);
+}
+
+function reveal(i){
+  let c=document.querySelector(`.cell[data-i="${i}"]`);
+  if(!c)return;
+  if(bombs.has(i)){c.classList.add("bomb");c.textContent="💣";}
+  else{c.classList.add("star");c.textContent="⭐";}
+}
 </script>
 </body>
 </html>
