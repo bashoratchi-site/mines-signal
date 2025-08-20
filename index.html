@@ -8,9 +8,8 @@
   :root{
     --bg:#222;
     --text:#fff;
-    --cell-blue:#3498db;   /* ko‘k (default) */
-    --star:#1abc9c;        /* yulduz ochilganda fon */
-    --bomb:#e74c3c;        /* bomba ochilganda fon */
+    --cell-blue:#3498db;
+    --star:#1abc9c;
   }
   body{
     margin:0; font-family:Arial, sans-serif; background:var(--bg); color:var(--text); text-align:center;
@@ -48,7 +47,7 @@
     display:grid; grid-template-columns:repeat(5, 1fr); gap:10px;
   }
   .cell{
-    aspect-ratio:1/1;           /* kvadrat */
+    aspect-ratio:1/1;
     background:var(--cell-blue);
     border-radius:10px;
     display:flex; align-items:center; justify-content:center;
@@ -57,7 +56,6 @@
   }
   .cell.revealed{ transform:scale(0.98); }
   .cell.star{ background:var(--star); }
-  .cell.bomb{ background:var(--bomb); }
   .footer{ margin-top:22px; font-size:13px; opacity:.9; }
 </style>
 </head>
@@ -83,7 +81,6 @@
   <div class="controls">
     <label for="bombCount">Bombalar soni:&nbsp;</label>
     <select id="bombCount">
-      <option value="1">1</option>
       <option value="3">3</option>
       <option value="5">5</option>
       <option value="7">7</option>
@@ -105,7 +102,7 @@
 
 <script>
   /* === ID & KEY sozlamalari === */
-  const correctIds = ["81293494","19294943","99887766"]; // xohlagancha qo‘shib boring
+  const correctIds = ["81293494","19294943","99887766"];
   const correctKey = "5420-2913-38211-18333";
 
   function login(){
@@ -116,80 +113,53 @@
     if (correctIds.includes(id) && key === correctKey){
       document.getElementById('login-page').style.display = 'none';
       document.getElementById('mines-page').style.display = 'block';
-      buildGrid(); // grid tayyorlab qo‘yamiz
+      buildGrid();
       err.textContent = "";
     } else {
       err.textContent = "❌ ID yoki KEY noto‘g‘ri!";
     }
   }
 
-  /* === Mines logikasi === */
   const SIZE = 25; // 5x5
-  let bombIndexes = new Set();
-  let animTimer = null;
 
   function buildGrid(){
     const grid = document.getElementById('grid');
     grid.innerHTML = "";
     for (let i=0; i<SIZE; i++){
       const d = document.createElement('div');
-      d.className = "cell";          // ko‘k (default)
+      d.className = "cell";
       d.dataset.index = i;
       grid.appendChild(d);
     }
   }
 
   function resetGrid(){
-    clearInterval(animTimer);
-    animTimer = null;
     buildGrid();
   }
 
   function signal(){
-    clearInterval(animTimer);
+    resetGrid();
 
-    // 1) new bombs set
     const count = parseInt(document.getElementById('bombCount').value, 10);
-    bombIndexes = new Set();
-    while (bombIndexes.size < count){
-      bombIndexes.add(Math.floor(Math.random()*SIZE));
-    }
+    let starsNeeded = 0;
 
-    // 2) tayyorlash: barcha kataklarni ko‘kka qaytaramiz
-    document.querySelectorAll('.cell').forEach(c=>{
-      c.className = 'cell';
-      c.textContent = '';
+    if (count === 3) starsNeeded = 5;
+    else if (count === 5) starsNeeded = 4;
+    else if (count === 7) starsNeeded = 3;
+
+    // tasodifiy indexlar
+    const allIndexes = Array.from({length:SIZE}, (_,i)=>i);
+    const shuffled = allIndexes.sort(()=>Math.random()-0.5);
+    const starIndexes = shuffled.slice(0, starsNeeded);
+
+    // ⭐ yulduzlarni ketma-ket 80ms bilan ochish
+    starIndexes.forEach((idx, i)=>{
+      setTimeout(()=>{
+        const cell = document.querySelector(`.cell[data-index="${idx}"]`);
+        cell.classList.add("revealed","star");
+        cell.textContent = "⭐";
+      }, i * 80);
     });
-
-    // 3) ochilish ketma-ketligi: avval bombalar, keyin yulduzlar
-    const bombList = [...bombIndexes];
-    const starList = [];
-    for (let i=0;i<SIZE;i++){ if(!bombIndexes.has(i)) starList.push(i); }
-
-    // tez ochilish — interval juda kichik
-    const order = bombList.concat(starList); // birinchi bombalar, keyin yulduzlar
-    let k = 0;
-    const speedMs = 80; // kerak bo‘lsa 40–80 oralig‘ida o‘zgartiring (tezroq/sekinroq)
-
-    animTimer = setInterval(()=>{
-      if (k >= order.length){ clearInterval(animTimer); return; }
-      const idx = order[k++];
-      reveal(idx);
-    }, speedMs);
-  }
-
-  function reveal(index){
-    const cell = document.querySelector(`.cell[data-index="${index}"]`);
-    if (!cell) return;
-    cell.classList.add('revealed');
-
-    if (bombIndexes.has(index)){
-      cell.classList.add('bomb');
-      cell.textContent = "💣";
-    } else {
-      cell.classList.add('star');
-      cell.textContent = "⭐";
-    }
   }
 </script>
 </body>
