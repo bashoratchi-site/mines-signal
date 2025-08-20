@@ -1,232 +1,196 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Bashoratchi Uz — Mines (One-time login)</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Bashoratchi Uz — Mines</title>
 <style>
   :root{
-    --bg:#121212; --text:#fff; --accent:#3498db; --good:#1abc9c; --bad:#e74c3c;
+    --bg:#222;
+    --text:#fff;
+    --cell-blue:#3498db;   /* ko‘k (default) */
+    --star:#1abc9c;        /* yulduz ochilganda fon */
+    --bomb:#e74c3c;        /* bomba ochilganda fon */
   }
-  body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);text-align:center;padding:28px;}
-  .card{background:#1e1e1e;padding:18px;border-radius:12px;display:inline-block;min-width:320px;}
-  input{width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #2b2b2b;background:#111;color:var(--text);}
-  button{padding:10px 14px;margin:6px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer;}
-  button.secondary{background:#2e2e2e;}
-  .error{color:var(--bad);min-height:18px;}
-  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:18px;max-width:360px;}
-  .cell{aspect-ratio:1/1;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;}
-  .cell.star{background:var(--good)}
-  .cell.bomb{background:var(--bad)}
-  header{display:flex;justify-content:space-between;align-items:center;gap:10px;max-width:720px;margin:0 auto 12px;}
-  .logout{background:#c0392b;}
-  small{opacity:.8}
+  body{
+    margin:0; font-family:Arial, sans-serif; background:var(--bg); color:var(--text); text-align:center;
+  }
+
+  /* LOGIN */
+  #login-page{ padding-top:90px; }
+  .login-box{
+    background:#333; padding:22px; border-radius:14px; display:inline-block; min-width:300px;
+  }
+  .login-box input{
+    width:100%; box-sizing:border-box; margin:8px 0; padding:10px 12px; border:none; border-radius:10px; font-size:16px;
+  }
+  .btn{
+    display:inline-block; margin:8px 6px; padding:10px 18px; background:#007bff; color:#fff; border:none; border-radius:10px; font-size:16px; cursor:pointer;
+  }
+  .btn:hover{ background:#005ec6; }
+  .get-key{
+    display:inline-block; margin-top:8px; padding:10px 18px; background:#28a745; color:#fff; border-radius:10px; text-decoration:none;
+  }
+  .get-key:hover{ background:#1f8a36; }
+  #error{ margin-top:8px; color:#ff6b6b; font-size:14px; min-height:18px; }
+
+  /* MINES */
+  #mines-page{ display:none; padding:20px 10px 40px; }
+  header{ padding:12px 0; background:#333; margin-bottom:12px; }
+  .controls{ margin:10px 0 6px; }
+  select{
+    padding:8px 10px; border:none; border-radius:10px; font-size:16px; background:#444; color:#fff;
+  }
+
+  .grid{
+    width:min(92vw, 360px);
+    margin:18px auto 0;
+    display:grid; grid-template-columns:repeat(5, 1fr); gap:10px;
+  }
+  .cell{
+    aspect-ratio:1/1;           /* kvadrat */
+    background:var(--cell-blue);
+    border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:26px; user-select:none;
+    transition:transform .08s ease, background .08s ease;
+  }
+  .cell.revealed{ transform:scale(0.98); }
+  .cell.star{ background:var(--star); }
+  .cell.bomb{ background:var(--bomb); }
+  .footer{ margin-top:22px; font-size:13px; opacity:.9; }
 </style>
 </head>
 <body>
 
-<!-- Login card -->
-<div id="loginCard" class="card" style="display:block;">
-  <h2>Bashoratchi Uz</h2>
-  <p>Ilovaga kirish uchun ID va KEY kiriting</p>
-  <input id="inpId" placeholder="ID (masalan 27102008)"/>
-  <input id="inpKey" placeholder="KEY (masalan 5420)"/>
-  <div style="display:flex;gap:8px;justify-content:center;">
-    <button onclick="doLogin()">Kirish</button>
-    <button class="secondary" onclick="clearStored()">Tozalash</button>
+<!-- LOGIN PAGE -->
+<div id="login-page">
+  <div class="login-box">
+    <h2>Bashoratchi Uz</h2>
+    <p>Enter your ID and KEY</p>
+    <input type="text" id="userId" placeholder="ID" />
+    <input type="text" id="userKey" placeholder="Key" />
+    <button class="btn" onclick="login()">Login</button>
+    <a class="get-key" href="https://t.me/bashoratchi1xbet" target="_blank">🔑 Get Key</a>
+    <div id="error"></div>
   </div>
-  <div class="error" id="err"></div>
-  <small>Get key: <a href="https://t.me/bashoratchi1xbet" target="_blank" style="color:#9ed1ff">@bashoratchi1xbet</a></small>
 </div>
 
-<!-- Main (mines) -->
-<div id="mainApp" style="display:none;max-width:720px;margin:0 auto;text-align:center;">
-  <header>
-    <h2 style="margin:0">Mines Signal</h2>
-    <div>
-      <button class="logout" onclick="logout()">Logout</button>
-    </div>
-  </header>
+<!-- MINES PAGE -->
+<div id="mines-page">
+  <header><h2>Mines Signal</h2></header>
 
-  <div style="background:#1b1b1b;padding:12px;border-radius:12px;display:inline-block;">
-    <label>Bombalar soni:
-      <select id="bombCount">
-        <option value="1">1</option>
-        <option value="3">3</option>
-        <option value="5">5</option>
-        <option value="7">7</option>
-      </select>
-    </label>
-    <div style="margin-top:10px;">
-      <button onclick="signal()">Signal</button>
-      <button class="secondary" onclick="resetGrid()">Reset</button>
-    </div>
-    <div class="grid" id="grid"></div>
-    <div style="margin-top:12px" class="footer">
-      Promocode: <strong>BASHORATCHIUZ</strong><br/><small>(speed = 80ms)</small>
-    </div>
+  <div class="controls">
+    <label for="bombCount">Bombalar soni:&nbsp;</label>
+    <select id="bombCount">
+      <option value="1">1</option>
+      <option value="3">3</option>
+      <option value="5">5</option>
+      <option value="7">7</option>
+    </select>
+  </div>
+
+  <div>
+    <button class="btn" onclick="signal()">Signal</button>
+    <button class="btn" onclick="resetGrid()">Reset</button>
+  </div>
+
+  <div id="grid" class="grid"></div>
+
+  <div class="footer">
+    Promocode: <strong>BASHORATCHIUZ</strong><br/>
+    <small>(promocode = 90% accuracy)</small>
   </div>
 </div>
 
 <script>
-/*
-  Qanday ishlaydi:
-  - correctIds va correctKey kod ichida saqlanadi.
-  - currentConfigHash avtomatik hisoblanadi (agar siz kodda ID yoki KEY o'zgartirsangiz, hash ham o'zgaradi).
-  - login muvaffaqiyatli bo'lsa localStorage ga "savedAuth" obyekti saqlanadi: {id,key,configHash}
-  - sahifa ochilganda savedAuth tekshiriladi: agar saqlangan configHash hozirgi configHash bilan mos bo'lsa va credentiallar to'g'ri bo'lsa auto-login bo'ladi.
-  - agar siz kodda ID/KEY yoki listni o'zgartirsangiz -> auto-login ishlamaydi va qayta login so'raladi.
-*/
+  /* === ID & KEY sozlamalari === */
+  const correctIds = ["81293494","19294943","99887766"]; // xohlagancha qo‘shib boring
+  const correctKey = "5420-2913-38211-18333";
 
-const correctIds = ["27102008","81293494","19294943","99887766"]; // kerak bo'lsa o'zgartiring
-const correctKey = "5420"; // sizning key
-const SPEED_MS = 80;
-const SIZE = 25;
+  function login(){
+    const id  = document.getElementById('userId').value.trim();
+    const key = document.getElementById('userKey').value.trim();
+    const err = document.getElementById('error');
 
-// configHash = base64(JSON of correctIds + ":" + correctKey)
-// avtomatik yangilanadi agar siz correctIds yoki correctKeyni o'zgartirsangiz
-function getConfigHash(){
-  try{
-    const s = JSON.stringify(correctIds) + ":" + String(correctKey);
-    return btoa(unescape(encodeURIComponent(s))); // base64 safe
-  }catch(e){
-    return btoa(String(Date.now())); // fallback
-  }
-}
-
-// DOM elementlar
-const loginCard = document.getElementById('loginCard');
-const mainApp = document.getElementById('mainApp');
-const errEl = document.getElementById('err');
-
-document.addEventListener('DOMContentLoaded', () => {
-  // sahifa yuklanganda savedAuth tekshiriladi
-  try {
-    const saved = localStorage.getItem('savedAuth');
-    if (!saved) { showLogin(); return; }
-    const obj = JSON.parse(saved);
-    const configHash = getConfigHash();
-
-    // tekshirish: saqlangan configHash bilan hozirgi configHash mos bo'lsa va credentiallar koddagi bilan to'g'ri bo'lsa -> auto login
-    if (obj && obj.configHash === configHash && 
-        correctIds.includes(String(obj.id)) && String(obj.key) === String(correctKey)) {
-      // muvaffaqiyatli auto-login
-      showMain();
+    if (correctIds.includes(id) && key === correctKey){
+      document.getElementById('login-page').style.display = 'none';
+      document.getElementById('mines-page').style.display = 'block';
+      buildGrid(); // grid tayyorlab qo‘yamiz
+      err.textContent = "";
     } else {
-      // noto'g'ri yoki eskirgan -> tozalaymiz va login so'raymiz
-      localStorage.removeItem('savedAuth');
-      showLogin();
+      err.textContent = "❌ ID yoki KEY noto‘g‘ri!";
     }
-  } catch(e){
-    console.error("Auto-login tekshiruvida xatolik:", e);
-    localStorage.removeItem('savedAuth');
-    showLogin();
   }
-});
 
-// UI helpers
-function showMain(){
-  loginCard.style.display = 'none';
-  mainApp.style.display = 'block';
-  errEl.textContent = '';
-  buildGrid();
-}
-function showLogin(){
-  loginCard.style.display = 'block';
-  mainApp.style.display = 'none';
-}
+  /* === Mines logikasi === */
+  const SIZE = 25; // 5x5
+  let bombIndexes = new Set();
+  let animTimer = null;
 
-// login funksiyasi
-function doLogin(){
-  const id = document.getElementById('inpId').value.trim();
-  const key = document.getElementById('inpKey').value.trim();
-  if (!id || !key) { errEl.textContent = "Iltimos ID va KEY kiriting."; return; }
-
-  // tekshirish
-  if (correctIds.includes(id) && key === String(correctKey)){
-    // saqlaymiz
-    const auth = { id: id, key: key, configHash: getConfigHash() };
-    localStorage.setItem('savedAuth', JSON.stringify(auth));
-    showMain();
-  } else {
-    errEl.textContent = "❌ ID yoki KEY noto‘g‘ri!";
+  function buildGrid(){
+    const grid = document.getElementById('grid');
+    grid.innerHTML = "";
+    for (let i=0; i<SIZE; i++){
+      const d = document.createElement('div');
+      d.className = "cell";          // ko‘k (default)
+      d.dataset.index = i;
+      grid.appendChild(d);
+    }
   }
-}
 
-// qo'shimcha: tozalash tugmasi (developer uchun)
-function clearStored(){
-  localStorage.removeItem('savedAuth');
-  errEl.textContent = "Saqlangan ma'lumot o'chirildi.";
-}
-
-// logout
-function logout(){
-  localStorage.removeItem('savedAuth');
-  showLogin();
-  document.getElementById('inpId').value = "";
-  document.getElementById('inpKey').value = "";
-}
-
-/* ===== Mines logic (odatdagidek) ===== */
-let bombIndexes = new Set();
-let animTimer = null;
-
-function buildGrid(){
-  const g = document.getElementById('grid');
-  g.innerHTML = '';
-  for (let i=0;i<SIZE;i++){
-    const cell = document.createElement('div');
-    cell.className = 'cell';
-    cell.dataset.index = i;
-    g.appendChild(cell);
+  function resetGrid(){
+    clearInterval(animTimer);
+    animTimer = null;
+    buildGrid();
   }
-}
 
-function resetGrid(){
-  clearInterval(animTimer);
-  animTimer = null;
-  buildGrid();
-}
+  function signal(){
+    clearInterval(animTimer);
 
-function signal(){
-  clearInterval(animTimer);
-  const count = parseInt(document.getElementById('bombCount').value,10) || 3;
-  bombIndexes = new Set();
-  while (bombIndexes.size < count){
-    bombIndexes.add(Math.floor(Math.random()*SIZE));
+    // 1) new bombs set
+    const count = parseInt(document.getElementById('bombCount').value, 10);
+    bombIndexes = new Set();
+    while (bombIndexes.size < count){
+      bombIndexes.add(Math.floor(Math.random()*SIZE));
+    }
+
+    // 2) tayyorlash: barcha kataklarni ko‘kka qaytaramiz
+    document.querySelectorAll('.cell').forEach(c=>{
+      c.className = 'cell';
+      c.textContent = '';
+    });
+
+    // 3) ochilish ketma-ketligi: avval bombalar, keyin yulduzlar
+    const bombList = [...bombIndexes];
+    const starList = [];
+    for (let i=0;i<SIZE;i++){ if(!bombIndexes.has(i)) starList.push(i); }
+
+    // tez ochilish — interval juda kichik
+    const order = bombList.concat(starList); // birinchi bombalar, keyin yulduzlar
+    let k = 0;
+    const speedMs = 80; // kerak bo‘lsa 40–80 oralig‘ida o‘zgartiring (tezroq/sekinroq)
+
+    animTimer = setInterval(()=>{
+      if (k >= order.length){ clearInterval(animTimer); return; }
+      const idx = order[k++];
+      reveal(idx);
+    }, speedMs);
   }
-  // barcha kataklarni asl holatga qaytarish
-  document.querySelectorAll('.cell').forEach(c=>{
-    c.className = 'cell';
-    c.textContent = '';
-  });
 
-  // ochilish ketma-ketligi: oldin bombalar keyin yulduzlar
-  const bombList = [...bombIndexes];
-  const starList = [];
-  for (let i=0;i<SIZE;i++){ if(!bombIndexes.has(i)) starList.push(i); }
-  const order = bombList.concat(starList);
+  function reveal(index){
+    const cell = document.querySelector(`.cell[data-index="${index}"]`);
+    if (!cell) return;
+    cell.classList.add('revealed');
 
-  let k = 0;
-  animTimer = setInterval(()=>{
-    if (k >= order.length){ clearInterval(animTimer); return; }
-    reveal(order[k++]);
-  }, SPEED_MS);
-}
-
-function reveal(index){
-  const cell = document.querySelector(`.cell[data-index="${index}"]`);
-  if (!cell) return;
-  cell.classList.add('revealed');
-  if (bombIndexes.has(index)){
-    cell.classList.add('bomb');
-    cell.textContent = '💣';
-  } else {
-    cell.classList.add('star');
-    cell.textContent = '⭐';
+    if (bombIndexes.has(index)){
+      cell.classList.add('bomb');
+      cell.textContent = "💣";
+    } else {
+      cell.classList.add('star');
+      cell.textContent = "⭐";
+    }
   }
-}
 </script>
-
 </body>
 </html>
