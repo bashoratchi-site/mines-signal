@@ -120,31 +120,26 @@
 
 <script>
   /* === ID & KEY sozlamalari === */
-  // Agar key/idni o'zgartirsangiz, eski localStorage saqlanmasligi uchun bu yerda qiymatlarni yangilang.
-  const correctIds = ["81293494","19294943","99887766"]; // xohlagancha qo‘shing
+  const correctIds = ["81293494","19294943","99887766"];
   const correctKey = "5420-2913-38211-18333";
-
-  // SPEED: so‘ralganidek 80 ms
   const SPEED_MS = 80;
 
   // Sahifa yuklanganda avtomatik tekshir
-  window.onload = function() {
+  document.addEventListener("DOMContentLoaded", () => {
     const savedId = localStorage.getItem("userId");
     const savedKey = localStorage.getItem("userKey");
 
     if (savedId && savedKey && correctIds.includes(savedId) && savedKey === correctKey) {
-      // avtomatik login
       document.getElementById('login-page').style.display = 'none';
       document.getElementById('mines-page').style.display = 'block';
       buildGrid();
     } else {
-      // noto‘g‘ri yoki mavjud emas → login oynasi va eski saqlangan ma'lumotlar o'chiriladi
       localStorage.removeItem("userId");
       localStorage.removeItem("userKey");
       document.getElementById('login-page').style.display = 'block';
       document.getElementById('mines-page').style.display = 'none';
     }
-  };
+  });
 
   function login(){
     const id  = document.getElementById('userId').value.trim();
@@ -152,10 +147,8 @@
     const err = document.getElementById('error');
 
     if (correctIds.includes(id) && key === correctKey){
-      // login muvaffaqiyatli → saqlaymiz
       localStorage.setItem("userId", id);
       localStorage.setItem("userKey", key);
-
       document.getElementById('login-page').style.display = 'none';
       document.getElementById('mines-page').style.display = 'block';
       buildGrid();
@@ -168,7 +161,6 @@
   function logout(){
     localStorage.removeItem("userId");
     localStorage.removeItem("userKey");
-    // sahifani yangilab login oynasini ko'rsatamiz
     document.getElementById('login-page').style.display = 'block';
     document.getElementById('mines-page').style.display = 'none';
     document.getElementById('userId').value = "";
@@ -185,7 +177,7 @@
     grid.innerHTML = "";
     for (let i=0; i<SIZE; i++){
       const d = document.createElement('div');
-      d.className = "cell";          // ko‘k (default)
+      d.className = "cell";
       d.dataset.index = i;
       grid.appendChild(d);
     }
@@ -200,26 +192,22 @@
   function signal(){
     clearInterval(animTimer);
 
-    // 1) new bombs set
     const count = parseInt(document.getElementById('bombCount').value, 10);
     bombIndexes = new Set();
     while (bombIndexes.size < count){
       bombIndexes.add(Math.floor(Math.random()*SIZE));
     }
 
-    // 2) tayyorlash: barcha kataklarni ko‘kka qaytaramiz
     document.querySelectorAll('.cell').forEach(c=>{
       c.className = 'cell';
       c.textContent = '';
     });
 
-    // 3) ochilish ketma-ketligi: avval bombalar, keyin yulduzlar
     const bombList = [...bombIndexes];
     const starList = [];
     for (let i=0;i<SIZE;i++){ if(!bombIndexes.has(i)) starList.push(i); }
 
-    // tez ochilish — endi SPEED_MS = 80
-    const order = bombList.concat(starList); // birinchi bombalar, keyin yulduzlar
+    const order = bombList.concat(starList);
     let k = 0;
 
     animTimer = setInterval(()=>{
